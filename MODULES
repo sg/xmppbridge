@@ -1,0 +1,88 @@
+-------------------------------------------------------
+ Modules / Bridges
+-------------------------------------------------------
+
+The modules included should be able to serve as examples
+of how you might create your own modules (bridges) to
+other local or remote applications.  They are implemented
+as ruby Classes and launching a module should create an
+instance of that class.
+
+Each module has its own directory within the 'modules'
+directory, and within that directory will be two source
+files: module-name.rb and commands.rb
+
+For example, if you have a module for connecting to a
+text game server called "spacewar", you would have:
+modules/spacewar/spacewar.rb
+modules/spacewar/commands.rb
+
+On start-up, the module names that get loaded from this
+directory structure are listed in the configuration file.
+
+Module source files are loaded using the ruby 'load' 
+method rather than 'require'.  This is so that the source
+code for a module can be edited and the module can be
+re'load'ed, allowing the changes to take effect without
+having to restart the bot. (see the !reload command in
+modules/main/commands.rb)
+
+Typically the module-name.rb would have all the code and
+methods for interfacing with the remote application and
+passing the messages back and forth between it and the
+user.  The commands.rb would have any commands that
+a user would run to create an instance of, or launch,
+the module.
+
+Be sure to look through the xmppbridge.rb source to
+see what global variables you have access to from within
+a module.
+
+-------------------------------------------------------
+ Included Modules
+-------------------------------------------------------
+Main:
+The main module is the core module for the bot and is
+required for the bot to run.
+
+FrotzClient:
+A client for redirecting the IO streams from a dfrotz
+process to your XMPP client.
+
+Trivia:
+A very messy trivia application played via XMPP Bridge.
+It shouldn't be too difficult to make simlar apps/games
+that are multiplayer in nature.
+
+MUSHclient:
+A simple TCP/IP client for connecting to an online MUSH
+or MUD.
+
+IRCclient:
+A simple TCP/IP client for connecting to an IRC server.
+Supports basic IRC commands such as joining/leaving channels,
+switching active channels, and sending private messages
+to other users.
+
+MUCbot:
+This is even more of a work in progress than the others.
+It currently creates instances of mucbot objects that
+connect to an existing MUC JID, but they aren't tied
+back to an individual user.  The mucbot object can be
+accessed by anyone with admin access on the bot.  Admins
+can monitor (or unmonitor) a mucbot object as well as
+send messages to the room.
+
+GForth:
+Runs an interactive session with the gforth Forth
+interpreter.  Public access to this is not recommended
+since it would be a huge security hole.  Basically the
+user has a gforth interpreter running at the permission
+level of the bot user.  So, for instance, you could easily
+have all files in your entire bot user directory deleted
+by executing a simple forth script.
+
+IRB:
+Runs an interactive session with the interactive ruby
+interpreter, irb.  Public access to this is not recommended
+since it would be a huge security hole (see gforth).

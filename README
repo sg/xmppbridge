@@ -1,0 +1,79 @@
+------------------------------------------------------
+ XMPP Bridge - Description
+------------------------------------------------------
+XMPP Bridge is a Jabber 'bot', written in Ruby, designed
+to allow connecting to and interfacing with other text-
+based apps or network resources via your XMPP client.
+
+For more details, visit http://www.stevegibson.com
+
+------------------------------------------------------
+ License
+------------------------------------------------------
+Copyright 2009 by Steve Gibson
+steve@stevegibson.com (xmpp and email)
+
+This is free software.  You can redistribute it and/or
+modify it under the terms of the BSD license.  See
+LICENSE for more details.
+
+
+------------------------------------------------------
+ System Requirements
+------------------------------------------------------
+XMPP4R
+http://home.gna.org/xmpp4r/
+
+sqlite3-ruby
+http://rubyforge.org/projects/sqlite-ruby/
+
+GNU screen (not required, but recommended)
+http://www.gnu.org/software/screen/
+
+------------------------------------------------------
+ Installation and Launching
+------------------------------------------------------
+
+Untar the distribution tarball.  Edit bridge.conf and
+change the account details to those which will be used by
+your bot.  Be sure to change the default bot master to
+a Jabber account that you own.
+
+Rename bridge.conf and bridge-trivia.db to 
+mybotname.conf and mybotname-trivia.db where 
+"mybotname" is the name of your bot as defined in 
+bridge.conf.
+
+If you have GNU screen you can launch the bot by doing:
+$ ./start mybotname
+This will launch your bot in a screen session which
+will be detached and backgrounded. Any output will
+be displayed to the screen session.
+
+If you don't have GNU screen you can launch it this way:
+$ ./xmppbridge.rb mybotname
+This will launch your bot and any output will be displayed
+to the console.
+
+There probably won't be any output unless you modify the
+script and set "debug_mode = true".
+
+You should then be able to add the bot's Jabber ID (JID) to
+the contact list of the default bot master JID that you
+specified in the config file.  The bot will auto-accept
+subscription requests.  Once added to your contact list
+send the bot a message with !help as the body and it will
+respond with the list of valid commands.
+
+
+------------------------------------------------------
+ Support
+------------------------------------------------------
+
+Well, there really isn't any.  Feel free to join the lobby
+of my XMPP Bridge bot (bridge@xmpplink.com) and ask your
+question(s) there.  Or you can email me or add me to your
+XMPP roster and I'll help out if I can.
+
+XMPP: steve@stevegibson.com
+Email: steve@stevegibson.com

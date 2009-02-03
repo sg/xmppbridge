@@ -1,0 +1,20 @@
+#!/bin/sh
+
+TS=`date +'%Y-%m-%d-%H%M'`
+if [ "x$1" = "x" ] ; then
+  echo "usage: ./start <botname>"
+  exit 1
+fi
+
+BOT=$1
+if [ ! -f $BOT.conf ] ; then
+  echo "$BOT.conf: file doesn't exist"
+  exit 1
+fi
+
+if [ -f $BOT.log ] ; then
+  mv $BOT.log $BOT-$TS.log
+fi
+echo "Starting $BOT..."
+screen -L -d -m ./xmppbridge.rb $BOT 
+echo "done."

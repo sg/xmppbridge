@@ -1,0 +1,2 @@
+http://home.gna.org/xmpp4r (XMPP4R)
+http://www.xmpp.org/extensions (XEPs)

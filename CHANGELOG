@@ -1,4 +1,7 @@
 XMPP Bridge changelog:
 -------------------------------------
+2009-02-03 (v1.0.1):
+- fixed a bug in main.rb module where users weren't being re-added to $lobby_users after coming back online.
+
 2009-02-03 (v1.0.0):
 - initial release

@@ -161,7 +161,7 @@ class XMPPBridgeMain
               else 
                 $db.execute("UPDATE roster SET lastpres='#{presence.to_s}' WHERE rjid='" + sql_sanitize(ujid) + "'")
                 if presence.to_s == "online" and add_user_to_lobby?(ujid)
-                  unless $lobby_users.include?(ujid) or 
+                  unless $lobby_users.include?(ujid) 
                     $lobby_users.each do |u|
                       reply_user(u, "#{$user_nicks[ujid]} has re-entered the lobby.", "std")
                     end

@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
 # encoding: iso-8859-1
-##!/opt/ruby1.9/bin/ruby1.9.0
+##!/opt/ruby1.9/bin/ruby1.9.1
 #
 # XMPP Bridge
 # Copyright 2009 by Steve Gibson
@@ -16,7 +16,7 @@ require 'xmpp4r/version/helper/simpleresponder'
 require 'sqlite3'
 require 'botcmd'
 
-$version = "1.0.0"
+$version = "1.0.1"
 $product = "XMPP Bridge"
 $uname = `uname -s -r`
 $uname.chomp!

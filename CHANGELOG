@@ -1,5 +1,9 @@
 XMPP Bridge changelog:
 -------------------------------------
+2009-02-04 (v1.0.2):
+- moved message and presence handling code in main.rb to method calls so that a !reload would incorporate any changes made.
+- fixed a bug where a user connected to a bridged app whose presence fluctuated between away and online would be re-added to $lobby_users while remaining connected to the bridged app.  Now the user will remain bridged unless presence 'unavailable' is received.
+
 2009-02-03 (v1.0.1):
 - fixed a bug in main.rb module where users weren't being re-added to $lobby_users after coming back online.
 

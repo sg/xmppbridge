@@ -93,39 +93,7 @@ class XMPPBridgeMain
         # Messages
         #
         @xmpp.received_messages do | message |
-          begin
-            msgfrom = message.from.to_s
-            ujid,rsrc = msgfrom.split(/\//)
-    
-            $total_msg_received += 1
-            msgtimestring = GetTime()
-            logit("Received message from #{ujid}: #{message.body}")
-           
-            # Check if from Banned JID
-            if $banned_users.include?(ujid)
-              reply_user(ujid, "You are banned. Reason: #{$banned_users[ujid]}", $mtype)
-              @xmpp.remove(ujid)
-            else
-    
-              # Check for messages from users using bridged apps and see if the 
-              # app should "handle" them.
-              if $bridged_users.include?(ujid) and not message.body =~ /^!/
-                $mtype = "std"
-                bridged_app = $bridged_users[ujid]
-                bridged_app.process_msg(ujid, msgtimestring, message.body)
-                logit("debug_mode:#{bridged_app.to_s} sending: #{message.body.chomp}") if debug_mode
-      
-              # Handle non-in-bridged-app messages
-              else
-                #logit("calling process_std_msg")
-                process_std_msg(ujid, msgtimestring, message.body)
-              end
-    
-            end # if banned
-    
-          rescue Exception => msg_err
-            logit("Error processing message: " + msg_err.to_s)
-          end 
+          received_messages_handler(message)
         end
     
         # new subscription updates
@@ -147,41 +115,7 @@ class XMPPBridgeMain
         # New Presence Updates
         #
         @xmpp.presence_updates do |contact, presence|
-          begin
-            ujid = contact.to_s
-            if $banned_users.include?(ujid)
-              logit("Received presence update from banned JID: #{ujid}: #{presence.to_s}")
-              logit("Removing #{ujid} from contact list.")
-              @xmpp.remove(ujid)
-            else
-              logit("Received presence update from #{ujid}: #{presence.to_s}")
-              # Update Presence in db
-              unless verify_user_db_entry(ujid)
-                reply_user(ujid, "Setting your nickname to '#{$user_nicks[ujid]}'.  Use the !reserve command to select a new nickname.", "std")
-              else 
-                $db.execute("UPDATE roster SET lastpres='#{presence.to_s}' WHERE rjid='" + sql_sanitize(ujid) + "'")
-                if presence.to_s == "online" and add_user_to_lobby?(ujid)
-                  unless $lobby_users.include?(ujid) 
-                    $lobby_users.each do |u|
-                      reply_user(u, "#{$user_nicks[ujid]} has re-entered the lobby.", "std")
-                    end
-                    add_user_to_lobby(ujid)
-                    reply_user(ujid, "You've re-entered the lobby.", "std")
-                    logit("Adding #{ujid} to lobby: pres=#{presence.to_s} in_lobby=1.")
-                  end
-                end
-              end
-    
-              # Remove from chat lobby or quit bridged app if they go unavailable
-              if presence.to_s == "unavailable"
-                quit_bridged_app(ujid)
-                leave_lobby(ujid, "unavailable")  
-              end
-            end
-          rescue Exception => exp
-            logit("Error (presence_updates): " + exp.to_s)
-            logit("Error (presence_updates): " + exp.backtrace.join("\n"))
-          end
+          presence_updates_handler(contact,presence)
         end
       end
     end
@@ -217,6 +151,87 @@ class XMPPBridgeMain
   # Methods
   #==================================================================
   
+  #==================================================================
+  # Received Messages Handler
+  #==================================================================
+  def received_messages_handler(message)
+    begin
+      msgfrom = message.from.to_s
+      ujid,rsrc = msgfrom.split(/\//)
+    
+      $total_msg_received += 1
+      msgtimestring = GetTime()
+      logit("Received message from #{ujid}: #{message.body}")
+     
+      # Check if from Banned JID
+      if $banned_users.include?(ujid)
+        reply_user(ujid, "You are banned. Reason: #{$banned_users[ujid]}", $mtype)
+        @xmpp.remove(ujid)
+      else
+    
+        # Check for messages from users using bridged apps and see if the 
+        # app should "handle" them.
+        if $bridged_users.include?(ujid) and not message.body =~ /^!/
+          $mtype = "std"
+          bridged_app = $bridged_users[ujid]
+          bridged_app.process_msg(ujid, msgtimestring, message.body)
+          logit("debug_mode:#{bridged_app.to_s} sending: #{message.body.chomp}") if debug_mode
+
+        # Handle non-in-bridged-app messages
+        else
+          #logit("calling process_std_msg")
+          process_std_msg(ujid, msgtimestring, message.body)
+        end
+    
+      end # if banned
+    
+    rescue Exception => msg_err
+      logit("Error processing message: " + msg_err.to_s)
+    end 
+
+  end
+
+  #==================================================================
+  # Presence Updates Handler
+  #==================================================================
+  def presence_updates_handler(contact,presence)
+    begin
+      ujid = contact.to_s
+      if $banned_users.include?(ujid)
+        logit("Received presence update from banned JID: #{ujid}: #{presence.to_s}")
+        logit("Removing #{ujid} from contact list.")
+        @xmpp.remove(ujid)
+      else
+        logit("Received presence update from #{ujid}: #{presence.to_s}")
+        # Update Presence in db
+        unless verify_user_db_entry(ujid)
+          reply_user(ujid, "Setting your nickname to '#{$user_nicks[ujid]}'.  Use the !reserve command to select a new nickname.", "std")
+        else 
+          $db.execute("UPDATE roster SET lastpres='#{presence.to_s}' WHERE rjid='" + sql_sanitize(ujid) + "'")
+          if presence.to_s == "online" and add_user_to_lobby?(ujid)
+            unless $lobby_users.include?(ujid) or $bridged_users.include?(ujid) 
+              $lobby_users.each do |u|
+                reply_user(u, "#{$user_nicks[ujid]} has re-entered the lobby.", "std")
+              end
+              add_user_to_lobby(ujid)
+              reply_user(ujid, "You've re-entered the lobby.", "std")
+              logit("Adding #{ujid} to lobby: pres=#{presence.to_s} in_lobby=1.")
+            end
+          end
+        end
+    
+        # Remove from chat lobby or quit bridged app if they go unavailable
+        if presence.to_s == "unavailable"
+          quit_bridged_app(ujid)
+          leave_lobby(ujid, "unavailable")  
+        end
+      end
+    rescue Exception => exp
+      logit("Error (presence_updates): " + exp.to_s)
+      logit("Error (presence_updates): " + exp.backtrace.join("\n"))
+    end
+  end
+
   #==================================================================
   # Standard Jabber Message Processor
   #==================================================================
@@ -300,7 +315,9 @@ class XMPPBridgeMain
   end
 
 
+  #==================================================================
   # Check if user should be added to lobby when presence detected
+  #==================================================================
   def add_user_to_lobby?(ujid)
     # Check for their in_lobby setting to see if they have a db entry
     in_lobby = $db.get_first_value("SELECT in_lobby FROM roster WHERE rjid='" + sql_sanitize(ujid) + "'")
@@ -311,7 +328,9 @@ class XMPPBridgeMain
     end
   end 
   
+  #==================================================================
   # Verify user db entry
+  #==================================================================
   def verify_user_db_entry(ujid)
     # Check for their in_lobby setting to see if they have a db entry
     in_lobby = $db.get_first_value("SELECT in_lobby FROM roster WHERE rjid='" + sql_sanitize(ujid) + "'")
@@ -344,7 +363,9 @@ class XMPPBridgeMain
     end
   end
 
+  #==================================================================
   # Check if a user (jid) is a bot master
+  #==================================================================
   def isbotmaster?(jid)
     if jid
       if jid == $botnick
@@ -358,11 +379,16 @@ class XMPPBridgeMain
     false
   end
     
-  # shortened reply_user function for use in evals while chatting with bot
+  #==================================================================
+  # Shortened reply_user function for use in evals while chatting with bot
+  #==================================================================
   def ru(msg)
     reply_user(ujid, msg, $mtype)
   end
   
+  #==================================================================
+  # Get bot status message
+  #==================================================================
   def get_status
     if $lobby_users.length == 0 and $bridged_users.length == 0
       "#{$product} v#{$version} : Type !help for menu"
@@ -371,6 +397,9 @@ class XMPPBridgeMain
     end
   end
   
+  #==================================================================
+  # Leave Lobby
+  #==================================================================
   def leave_lobby(ujid, reason)
     begin
       reason = "exit" if reason == nil
@@ -389,6 +418,9 @@ class XMPPBridgeMain
     end
   end
 
+  #==================================================================
+  # Add user to Lobby
+  #==================================================================
   def add_user_to_lobby(ujid)
     begin
       if $lobby_users.include?(ujid)
@@ -404,6 +436,9 @@ class XMPPBridgeMain
 
   end
     
+  #==================================================================
+  # Quit bridged app
+  #==================================================================
   def quit_bridged_app(ujid)
     begin
       if $bridged_users.include?(ujid)
@@ -416,18 +451,26 @@ class XMPPBridgeMain
     end
   end
   
+  #==================================================================
+  # Notify bot masters
+  #==================================================================
   def notify(msg)
     $masters.each do |jid|
       reply_user(jid, msg, "std")
     end
   end
   
-  # get a timestamp of the current time
+  #==================================================================
+  # Get time stamp
+  #==================================================================
   def GetTime
     msgtime = Time.now
     msgtime.strftime('%H:%M:%S')
   end
    
+  #==================================================================
+  # Log command
+  #==================================================================
   def logcmd(timestamp, jid, cmd)
     $db.execute("INSERT INTO cmdhist(time, jid, cmd) VALUES ('#{timestamp}', '#{jid}', '#{cmd}')")
   end

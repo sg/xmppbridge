@@ -104,6 +104,7 @@ class FrotzClient
       rescue Exception => e
         logit("Error writing to @stdin: " + e.to_s)
         reply_user(@jid, "Error writing to @stdin: " + e.to_s, "std")
+        disconnect(@jid)
       end
     end
   end

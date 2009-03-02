@@ -93,7 +93,7 @@ class XMPPBridgeMain
         # Messages
         #
         @xmpp.received_messages do | message |
-          received_messages_handler(message)
+          received_messages_handler(message, debug_mode)
         end
     
         # new subscription updates
@@ -122,6 +122,28 @@ class XMPPBridgeMain
     @std_msg_thread[:name] = "msg"
     $tg_msg.add(@std_msg_thread)
     
+    #==============================================================
+    # Timeout checker thread
+    #==============================================================
+    @timeout_check_thread = Thread.new do
+      loop do
+        sleep 60 
+        begin
+          $bridged_users.each_key do |user|
+            lastseen = $db.get_first_value("SELECT lastseen FROM roster WHERE rjid='" + sql_sanitize(user) + "' AND lastpres='unavailable'")
+            if check_timeout(lastseen, $bridged_app_timeout)
+              logit("timeout for user: #{user} lastseen: #{lastseen}")
+              quit_bridged_app(user)
+            end
+          end
+        rescue Exception => e
+          logit("Error (timeout_check_thread): " + e.to_s)
+        end
+      end
+    end
+    @timeout_check_thread[:name] = "toutchk"
+    $tg_con.add(@timeout_check_thread)
+
     #==============================================================
     # Connection checker thread
     #==============================================================
@@ -154,7 +176,7 @@ class XMPPBridgeMain
   #==================================================================
   # Received Messages Handler
   #==================================================================
-  def received_messages_handler(message)
+  def received_messages_handler(message, debug_mode)
     begin
       msgfrom = message.from.to_s
       ujid,rsrc = msgfrom.split(/\//)
@@ -220,11 +242,15 @@ class XMPPBridgeMain
           end
         end
     
-        # Remove from chat lobby or quit bridged app if they go unavailable
+        # Remove from chat lobby and set last seen time if we receive
+        # presence "unavailable"
         if presence.to_s == "unavailable"
-          quit_bridged_app(ujid)
+          seen = Time.now.strftime('%Y-%m-%d %H:%M:%S')
+          $db.execute("UPDATE roster SET lastseen='#{seen}' WHERE rjid='" + sql_sanitize(ujid) + "'")
+          #quit_bridged_app(ujid)
           leave_lobby(ujid, "unavailable")  
         end
+
       end
     rescue Exception => exp
       logit("Error (presence_updates): " + exp.to_s)
@@ -314,6 +340,18 @@ class XMPPBridgeMain
     end
   end
 
+  #==================================================================
+  # Check timeout of bridged apps for 'unavailable' users
+  #==================================================================
+  def check_timeout(lastseen, minutes)
+    return false unless lastseen 
+    ls_time = DateTime.parse(lastseen)
+    if DateTime.now.min - ls_time.min > minutes
+      return true
+    else
+      return false
+    end
+  end 
 
   #==================================================================
   # Check if user should be added to lobby when presence detected

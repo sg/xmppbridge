@@ -1,6 +1,5 @@
 #!/usr/bin/env ruby
 # encoding: iso-8859-1
-##!/opt/ruby1.9/bin/ruby1.9.1
 #
 # XMPP Bridge
 # Copyright 2009 by Steve Gibson
@@ -16,7 +15,7 @@ require 'xmpp4r/version/helper/simpleresponder'
 require 'sqlite3'
 require 'botcmd'
 
-$version = "1.0.2"
+$version = "1.0.4"
 $product = "XMPP Bridge"
 $uname = `uname -s -r`
 $uname.chomp!
@@ -59,6 +58,7 @@ if config['accept_subs'] == "true"
 else
   accept_subs = false
 end
+$bridged_app_timeout = config['timeout'].to_i
 
 # Debuging: true = extensive xmpp output to stderr
 debug_mode = true

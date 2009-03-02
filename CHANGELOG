@@ -1,5 +1,19 @@
 XMPP Bridge changelog:
 -------------------------------------
+2009-03-02 (v1.0.4):
+- Fixed bug in mucbot module where a call to GetTime() was failing and was preventing muc messages from being received.
+
+- In modules that use tcp/ip sockets, when the other side has dropped the connection and we get a broken pipe error on sending, we now call disconnect() so that the user is properly removed from the bridge and put back in the lobby.
+
+- Added a new $bridged_app_timeout variable (set using 'timeout' in the config file) that determines how many minutes to wait before disconnecting a bridged app from a user that has sent presence 'unavailable'.  This gives a user the chance to reconnect and resume without losing their bridged session.
+
+- Added better filtering of ANSI codes from text-based servers that use them (MU*, etc)
+
+- Added a simple MUD client bridge that is similar to the MUSH client.
+
+2009-02-05 (v1.0.3):
+- mushclient.rb now filters out ascii graphics escape sequences (e.g., ^[1;32m) and replaces them with a '*'.
+
 2009-02-04 (v1.0.2):
 - moved message and presence handling code in main.rb to method calls so that a !reload would incorporate any changes made.
 - fixed a bug where a user connected to a bridged app whose presence fluctuated between away and online would be re-added to $lobby_users while remaining connected to the bridged app.  Now the user will remain bridged unless presence 'unavailable' is received.

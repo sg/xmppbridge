@@ -208,7 +208,7 @@ class MUCBot
 
       # Avoid reacting on messages delivered as room history
       unless time
-        timestamp = GetTime()
+        timestamp = $b.GetTime()
         # forward to all people on the monitor list
         @monitors.each do |monitor_jid|
           reply_user(monitor_jid, "[#{@muc_number}]#{@room_alias}: <#{nick}> #{text}", "std")

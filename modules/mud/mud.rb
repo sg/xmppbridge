@@ -1,9 +1,9 @@
 # encoding: iso-8859-1
 #=====================================================
-# MUSHclient XMPPBridge module
+# MUDclient XMPPBridge module
 #
 # This module opens a tcp/ip connection to the specified
-# MUSH server.
+# MUD server.
 #
 #  Copyright 2009 by Steve Gibson
 #  steve@stevegibson.com (xmpp and email)
@@ -18,13 +18,13 @@ require 'socket'
 
 include Socket::Constants
 
-class MUSHclient
+class MUDclient
 
   attr_reader :version
 
   def initialize(ujid, host, port)
 
-    @version = "1.1"
+    @version = "1.0"
 
     @jid = ujid
     @host = host
@@ -33,19 +33,19 @@ class MUSHclient
     @thread = Thread.new do
       begin
         logit("#{self} created for #{@jid}.")
-        logit("MUSHclient v#{@version} - #{@jid} connection successful.")
-        reply_user(@jid, "XMPP-Bridge MUSHclient v#{@version}", $mtype)
+        logit("MUDclient v#{@version} - #{@jid} connection successful.")
+        reply_user(@jid, "XMPP-Bridge MUDclient v#{@version}", $mtype)
         $lobby_users.each do |u|
-          reply_user(u, "#{$user_nicks[@jid]} connected to the MUSH.", $mtype)
+          reply_user(u, "#{$user_nicks[@jid]} connected to the MUD.", $mtype)
         end
         $bridges << self
         $bridged_users[@jid] = self # add to player=>bridged_app hash
         #$b.xmpp.status(nil,$b.get_status)
 
         @sock = TCPSocket.new(@host, @port)
+        #@sock.setsockopt(Socket::SOL_SOCKET, Socket::SO_KEEPALIVE, 10)
         @sock.set_encoding("iso-8859-1") if RUBY_VERSION =~ /1\.9/
         loop do
-          sleep 0.1
           result = select([@sock], nil, nil)
           if result != nil
             for inp in result[0]
@@ -54,17 +54,20 @@ class MUSHclient
               end
             end
           end
+          sleep 0.05
         end
       rescue Exception => e
         reply_user(@jid, "Socket: " + e.to_s + "\n" + e.backtrace.join, "std")
       end
     end
-    @thread[:name] = "mush:#{@jid}"
+    @thread[:name] = "mud:#{@jid}"
   end
 
   def send(msg)
-    if msg.chomp == "QUIT"
-      self.disconnect()
+    if msg.chomp == "quit"
+      @sock.write("quit\n")
+      sleep 0.1
+      disconnect(@jid)
     else
       begin
         msg.gsub!(/\&lt;/, '<') # convert to real less-thans
@@ -83,6 +86,7 @@ class MUSHclient
         disconnect(@jid)
       end
     end
+  end
 
   def process_msg(ujid, msgtimestr, msgbody)
     # not doing any internal processing to this message.
@@ -91,26 +95,26 @@ class MUSHclient
   end
                
   def disconnect(ujid=nil)
-    @sock.close
+    @sock.close unless @sock.closed?
     Thread.kill(@thread)
-    reply_user(@jid, "Disconnected from MUSH.", "std")
+    reply_user(@jid, "Disconnected from MUD.", "std")
     $bridges.delete($bridged_users[@jid])
     $bridged_users.delete(@jid)
-    logit("#{@jid} has exited the MUSH client.")
+    logit("#{@jid} has exited the MUD client.")
     reply_user(@jid, "Entering lobby...", "std")
     $lobby_users.each do |user|
-      reply_user(user, "#{$user_nicks[@jid]} has exited the MUSH and entered the lobby.", "std") unless user == @jid
+      reply_user(user, "#{$user_nicks[@jid]} has exited the MUD and entered the lobby.", "std") unless user == @jid
     end
     $b.add_user_to_lobby(@jid)
     #$b.xmpp.status(nil, $b.get_status)
   end
 
   def type
-    "mush"
+    "mud"
   end
 
   def info
-    "mush: " + @jid
+    "mud: " + @jid
   end
 
   private
@@ -124,7 +128,12 @@ class MUSHclient
       msg.gsub!(/\x01/,'*')
       msg.gsub!(/[\x02-\x1F]|[\x7F-\xFF]/,'')
 
-      # strip/replace escape codes 
+      msg = msg.gsub(/[\x02-\x1F]|[\x7F-\xFF]/,'')
+
+      # replace escape codes 
+      #msg.gsub!(/\x5b.+?m/,'')
+      #msg.gsub!(/\[.+?m/,'')
+
       msg.gsub!(/\[\d\d?;\d\d?;\d\d?\w/,'')
       msg.gsub!(/\[\d\d?;\d\d?\w/,'')
       msg.gsub!(/\[\d\d?\w/,'')
@@ -136,4 +145,4 @@ class MUSHclient
     end
   end
 
-end
+end # class

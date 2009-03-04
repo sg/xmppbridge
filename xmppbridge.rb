@@ -15,7 +15,7 @@ require 'xmpp4r/version/helper/simpleresponder'
 require 'sqlite3'
 require 'botcmd'
 
-$version = "1.0.4"
+$version = "1.0.5"
 $product = "XMPP Bridge"
 $uname = `uname -s -r`
 $uname.chomp!
@@ -220,7 +220,6 @@ else # database doesn't exist; create and populate
 
   # populate roster table with default bot masters
   $db.execute("INSERT INTO roster (rjid,rlvl,rnick,rpasswd,in_lobby) VALUES ('#{$default_master}','owner','Steve','foobar99', '1')")
-  $db.execute("INSERT INTO roster (rjid,rlvl,rnick,rpasswd,in_lobby) VALUES ('steve@xmpplink.com','owner','SteveX','foobar99', '1')")
   $masters << $default_master
   logit("done inserting default master user")
 

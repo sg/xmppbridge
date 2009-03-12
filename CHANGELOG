@@ -1,17 +1,17 @@
 XMPP Bridge changelog:
 -------------------------------------
+2009-03-13 (v1.0.6):
+- Fixed mushclient.rb that was missing an 'end' statement.
+- Fixed a crasher where ircclient.rb would choke upon receiving a \x01 related to an irc "ACTION".  Now gets replaced with a '*'.
+
 2009-03-03 (v1.0.5):
 - Removed my steve@xmpplink.com JID as a bot 'owner' entry in the default database table creation code in xmppbridge.rb (oops).
 
 2009-03-02 (v1.0.4):
 - Fixed bug in mucbot module where a call to GetTime() was failing and was preventing muc messages from being received.
-
 - In modules that use tcp/ip sockets, when the other side has dropped the connection and we get a broken pipe error on sending, we now call disconnect() so that the user is properly removed from the bridge and put back in the lobby.
-
 - Added a new $bridged_app_timeout variable (set using 'timeout' in the config file) that determines how many minutes to wait before disconnecting a bridged app from a user that has sent presence 'unavailable'.  This gives a user the chance to reconnect and resume without losing their bridged session.
-
 - Added better filtering of ANSI codes from text-based servers that use them (MU*, etc)
-
 - Added a simple MUD client bridge that is similar to the MUSH client.
 
 2009-02-05 (v1.0.3):

@@ -83,6 +83,7 @@ class MUSHclient
         disconnect(@jid)
       end
     end
+  end
 
   def process_msg(ujid, msgtimestr, msgbody)
     # not doing any internal processing to this message.

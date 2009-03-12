@@ -15,7 +15,7 @@ require 'xmpp4r/version/helper/simpleresponder'
 require 'sqlite3'
 require 'botcmd'
 
-$version = "1.0.5"
+$version = "1.0.6"
 $product = "XMPP Bridge"
 $uname = `uname -s -r`
 $uname.chomp!

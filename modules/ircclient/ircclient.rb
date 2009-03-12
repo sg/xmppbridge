@@ -50,7 +50,6 @@ class IRCclient
         #$b.xmpp.status(nil,$b.get_status)
 
         @sock = TCPSocket.new(@host, @port)
-        #@sock.setsockopt(Socket::SOL_SOCKET, Socket::SO_KEEPALIVE, 10)
         @sock.set_encoding("iso-8859-1") if RUBY_VERSION =~ /1\.9/
         login_thread = Thread.new do
 
@@ -208,12 +207,8 @@ class IRCclient
 
       rescue SocketError => se
         reply_user(@jid, "Socket error (send): " + se.to_s, "std")
-        logit("Socket error (send): " + se.to_s)
-        disconnect(@jid)
       rescue Exception => ex
         reply_user(@jid, "Error (send): " + ex.to_s, "std")
-        logit("Error (send): " + ex.to_s)
-        disconnect(@jid)
       end
     end
   end
@@ -275,8 +270,8 @@ class IRCclient
 
         # try to clean up bytes that break things, in REXML I believe...
         # (we don't really need them anyway)
-        msg = msg_raw.gsub(/\x01/,'*')
-        msg = msg_raw.gsub(/[\x02-\x1F]|[\x7F-\xFF]/,'')
+        msg.gsub!(/\x01/,'*')
+        msg.gsub!(/[\x02-\x1F]|[\x7F-\xFF]/,'')
         
         if msg.match(/End of \/MOTD/)
           @show_srv = true

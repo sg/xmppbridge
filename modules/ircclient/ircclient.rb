@@ -25,7 +25,7 @@ class IRCclient
 
   def initialize(ujid, host, port, nick)
 
-    @version = "1.0"
+    @version = "1.1"
 
     @jid = ujid
     @host = host
@@ -42,6 +42,7 @@ class IRCclient
       begin
         logit("#{self} created for #{@jid}.")
         reply_user(@jid, "XMPP-Bridge IRCClient v#{@version}", $mtype)
+        show_help()
         $lobby_users.each do |u|
           reply_user(u, "#{$user_nicks[@jid]} connected to IRC.", $mtype)
         end
@@ -87,15 +88,19 @@ class IRCclient
   def show_help
     reply_user(@jid, "=== IRC Bridge Commands ===", "std")
     reply_user(@jid, " .j <chan>  : Join Channel", "std")
-    reply_user(@jid, " .l <chan>  : Leave Channel", "std")
+    reply_user(@jid, " .p <chan>  : Part Channel", "std")
     reply_user(@jid, " .lc        : List Channels", "std")
     reply_user(@jid, " .c [chan#] : Change to chan #", "std")
-    reply_user(@jid, " .s <msg>   : Send msg to server", "std")
+    reply_user(@jid, " .t <topic> : Set chan topic", "std")
+    reply_user(@jid, " .s <msg>   : Send raw msg to server", "std")
     reply_user(@jid, " .n <nick>  : Set Nick", "std")
     reply_user(@jid, " .w <nick>  : Whois Nick", "std")
     reply_user(@jid, " .r         : Chan Roster", "std")
-    reply_user(@jid, " .raw       : Raw Mode", "std")
-    reply_user(@jid, " .p <nick> <msg> : Private Msg", "std")
+    reply_user(@jid, " .raw       : Recv raw msgs", "std")
+    reply_user(@jid, " .m <nick> <msg> : Private Msg", "std")
+    reply_user(@jid, " .k <nick> <msg> : Kick from channel", "std")
+    reply_user(@jid, " .op <nick> : Make admin", "std")
+    reply_user(@jid, " .deop <nick> : Remove admin", "std")
     reply_user(@jid, " .quit [msg] : Quit (with msg)", "std")
     reply_user(@jid, " .h |.?     : This help msg", "std")
   end
@@ -114,7 +119,7 @@ class IRCclient
         elsif msg.match(/^\.j (.+)$/)
           @sock.write("JOIN #{$1}\n")
 
-        elsif msg.match(/^\.l (.+)$/)
+        elsif msg.match(/^\.p (.+)$/)
           unless $1
             @sock.write("PART #{@channel}")
           else
@@ -193,8 +198,20 @@ class IRCclient
             reply_user(@jid, "show_srv = true", "std")
           end
           
-        elsif msg.match(/^\.p (.+?) (.+)$/)
+        elsif msg.match(/^\.m (.+?) (.+)$/)
           @sock.write("PRIVMSG #{$1} :#{$2}\n")
+
+        elsif msg.match(/^\.k (.+?) (.+)$/)
+          @sock.write("KICK #{@channel} #{$1} :#{$2}\n")
+
+        elsif msg.match(/^\.op (.+?)$/)
+          @sock.write("MODE #{@channel} +o #{$2}\n")
+
+        elsif msg.match(/^\.deop (.+?)$/)
+          @sock.write("MODE #{@channel} -o #{$2}\n")
+
+        elsif msg.match(/^\.t (.+?)$/)
+          @sock.write("TOPIC #{@channel} :#{$1}\n")
 
         else
           unless @channel == nil
@@ -273,14 +290,11 @@ class IRCclient
         msg.gsub!(/\x01/,'*')
         msg.gsub!(/[\x02-\x1F]|[\x7F-\xFF]/,'')
         
-        if msg.match(/End of \/MOTD/)
-          @show_srv = true
-          reply_user(@jid, "*** End of MOTD -- now showing SRV messages.", "std")
+        reply_user(@jid, msg.chomp, "std") if @raw_mode
 
-        elsif msg.match(/^PING :(.+)/) 
-          reply_user(@jid, msg.chomp, "std") if @raw_mode
+        if msg.match(/^PING :(.+)/) 
           @sock.write("PONG #{$1}\n")
-          reply_user(@jid, ">>> sent PONG to #{$1}", "std")
+          reply_user(@jid, ">>> answered PING from #{$1}", "std")
 
         elsif msg.match(/^:(.+?)!(.+?) NOTICE (.+?) :(.+)$/)
           notice_msg = "."
@@ -289,12 +303,10 @@ class IRCclient
           else
             notice_msg = "[NOTICE #{$3}] #{$1}: #{$4}"
           end
-          reply_user(@jid, msg.chomp, "std") if @raw_mode
           reply_user(@jid, notice_msg.chomp, "std")
 
         elsif msg.match(/^:(.+?)!(.+?) PRIVMSG (.+?) :.VERSION/)
-          reply_user(@jid, msg.chomp, "std") if @raw_mode
-          @sock.write("NOTICE #{$1} :XMPP Bridge v#{$version}")
+          @sock.write("NOTICE #{$1} :XMPP Bridge v#{$version}\n")
           reply_user(@jid, ">>> sent CTCP VERSION reply to #{$1}", "std")
 
         elsif msg.match(/^:(.+?)!(.+?) PRIVMSG (.+?) :(.+)$/)
@@ -304,13 +316,11 @@ class IRCclient
           else
             priv_msg = "[#{$3}]<#{$1}> #{$4}"
           end
-          reply_user(@jid, msg.chomp, "std") if @raw_mode
           reply_user(@jid, priv_msg.chomp, "std")
 
         elsif msg.match(/^:(.+?)!(.+?) QUIT :(.*)$/)
           reason = $3.chomp
           quit_msg = "*** #{$1} disconnected (#{reason})"
-          reply_user(@jid, msg.chomp, "std") if @raw_mode
           reply_user(@jid, quit_msg.chomp, "std")
 
         elsif msg.match(/^:(.+?)!(.+?) JOIN :(.+)$/)
@@ -320,7 +330,6 @@ class IRCclient
             reply_user(@jid, "active channel now '#{@channel}'", "std")
           end
           join_msg = "--> #{$1} joined #{$3}"
-          reply_user(@jid, msg.chomp, "std") if @raw_mode
           reply_user(@jid, join_msg.chomp, "std")
 
         # freenode style PART
@@ -341,7 +350,6 @@ class IRCclient
             end
           end
           part_msg = "<-- #{$1} left #{$3}: #{$4}"
-          reply_user(@jid, msg.chomp, "std") if @raw_mode
           reply_user(@jid, part_msg.chomp, "std")
 
         # efnet style PART
@@ -362,7 +370,6 @@ class IRCclient
             end
           end
           part_msg = "<-- #{$1} left #{$3}"
-          reply_user(@jid, msg.chomp, "std") if @raw_mode
           reply_user(@jid, part_msg.chomp, "std")
 
         # undernet style PART
@@ -383,25 +390,64 @@ class IRCclient
             end
           end
           part_msg = "<-- #{$1} left #{$3}"
-          reply_user(@jid, msg.chomp, "std") if @raw_mode
           reply_user(@jid, part_msg.chomp, "std")
 
         elsif msg.match(/^:(.+?)!(.+?) NICK :(.+)$/)
           nick_msg = "*** #{$1} is now known as #{$3}"
-          reply_user(@jid, msg.chomp, "std") if @raw_mode
           reply_user(@jid, nick_msg.chomp, "std")
 
         # catch various server messages (using a 3-digit code)
-        # and just display them as generic "SRV" messages.
-        elsif msg.match(/^:(.+?)\.(.+?)\.(.+?) \d\d\d (.+?) (.+?)$/)
-          srv_msg = "[SRV] #{$5}"
-          if @show_srv
-            reply_user(@jid, msg.chomp, "std") if @raw_mode
-            reply_user(@jid, srv_msg.chomp, "std")
+        # and respond accordingly for some types, otherwise
+        # just display them as generic "SRV" messages.
+        elsif msg.match(/^:(.+?)\.(.+?)\.(.+?) (\d\d\d) (.+?) (.+?)$/)
+          case $4
+            when "376" # End of /MOTD 
+              @show_srv = true
+              reply_user(@jid, "*** End of MOTD -- now showing SRV messages.", "std")
+            when "353" # Begin channel names list
+              if msg.match(/^:(.+?)\.(.+?)\.(.+?) (\d\d\d) (.+?) @ (.+?) :(.+?)$/)
+                occupants_array = $7.split(' ')
+                occupants = occupants_array.join(", ")
+                reply_user(@jid, "*** [#{$6}] Occupants: #{occupants}", "std")
+              else
+                reply_user(@jid, "*** (regex mismatch) occupants: #{$6}", "std")
+              end
+            when "366" # End of /NAMES
+              reply_user(@jid, "*** End of Occupant List", "std")
+            when "332" # Channel topic
+              if msg.match(/^:(.+?)\.(.+?)\.(.+?) (\d\d\d) (.+?) (.+?) :(.+?)$/)
+                reply_user(@jid, "*** [#{$6}] Topic: #{$7}", "std")
+              else
+                reply_user(@jid, "*** (regex mismatch) Topic: #{$6}", "std")
+              end
+            else
+              srv_msg = "[SRV] #{$6}"
+              if @show_srv
+                reply_user(@jid, srv_msg.chomp, "std")
+              end
           end
 
+        elsif msg.match(/^:(.+?)\.(.+?)\.(.+?) MODE (.+?) (.+?)$/)
+          reply_user(@jid, "*** [#{$4}] MODE #{$5}", "std")
+
+        elsif msg.match(/^:(.+?)!(.+?) MODE (.+?) (.+?) (.+?)$/)
+          mode_msg = "*** [#{$3}] MODE #{$4} #{$5} by #{$1}"
+          reply_user(@jid, mode_msg.chomp, "std")
+
+        elsif msg.match(/^:(.+?)!(.+?) TOPIC (.+?) :(.+?)$/)
+          topic_msg = "*** [#{$3}] #{$1} set TOPIC: #{$4}"
+          reply_user(@jid, topic_msg.chomp, "std")
+
+        elsif msg.match(/^:(.+?)!(.+?) KICK (.+?) (.+?) :(.+?)$/)
+          if ($4 == @nick)
+            kick_msg = "*** [#{$3}] You were KICKED by #{$1} (#{$5})"
+          else
+            kick_msg = "*** [#{$3}] KICKED #{$4} (#{$5})"
+          end
+          reply_user(@jid, kick_msg.chomp, "std")
+          @sock.write("JOIN #{$3}\n")
+
         elsif msg.match(/^:(.+?) \d\d\d (.+?) :(.+)$/)
-          reply_user(@jid, msg.chomp, "std") if @raw_mode
           reply_user(@jid, $3.chomp, "std") unless $3 == nil
         else
           reply_user(@jid, msg.chomp, "std")

@@ -41,6 +41,8 @@ $cmdarray.push(Botcmd.new(
         :room_alias => room_alias
       )
       mucbot.monitors << ujid
+      $mucbot_array = Array.new unless $mucbot_array
+      $mucbot_array << mucbot
     rescue Exception => e
       reply_user(ujid, "Error (!mucjoin): " + e.to_s, $mtype)
     end
@@ -150,6 +152,8 @@ $cmdarray.push(Botcmd.new(
       ObjectSpace.each_object(MUCBot) do |m|
         if m.muc_number.to_s == muc_num
           m.disconnect
+          $mucbot_array.delete(m)
+          m = nil
           found_muc = true
           break
         end
@@ -180,6 +184,8 @@ $cmdarray.push(Botcmd.new(
       ObjectSpace.each_object(MUCBot) do |m|
         if m.muc_number.to_s == muc_num
           m.disconnect
+          $mucbot_array.delete(m)
+          m = nil
           found_muc = true
           break
         end

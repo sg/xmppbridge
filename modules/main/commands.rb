@@ -132,6 +132,7 @@ $cmdarray.push(Botcmd.new(
   :type => :private,
   :code => %q{
     
+    eval_module = ""
     begin
       if arg1 == nil
         reply_user(ujid, "usage: !reload <module|cmd|all>", $mtype)
@@ -147,6 +148,7 @@ $cmdarray.push(Botcmd.new(
       else
         matched = false
         $modules.each do |m|
+          eval_module = m
           if arg1 == m or arg1 == "all"
             matched = true
             logit("#{ujid} issued a !reload #{m}")
@@ -159,9 +161,9 @@ $cmdarray.push(Botcmd.new(
           reply_user(ujid, "couldn't find a module named \"#{arg1}\"", $mtype)
         end
       end 
-    rescue Exception
-      logit("Error (!reload): " + $!)
-      reply_user(ujid, "Error (!reload): " + $!, $mtype)
+    rescue Exception => err
+      logit("Error (!reload #{eval_module}): " + err.to_s)
+      reply_user(ujid, "Error (!reload #{eval_module}): " + err.to_s, $mtype)
     end
   },
   :return => nil,

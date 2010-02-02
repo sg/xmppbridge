@@ -22,16 +22,19 @@ $master_initiated_leave = false
 #==================================================================
 class MUCBot
 
-  attr_accessor :version, :room_jid, :password, :botnick, :auto_rejoin, :allow_public_commands, :room_alias, :monitors, :master_nicks, :muc_number, :mucbot, :joined_room, :chatroom_roster 
+  attr_accessor :version, :room_jid, :password, :botnick, :auto_rejoin, :allow_public_commands, :room_alias, :monitors, :master_nicks, :muc_number, :mucbot, :connected_to_room, :chatroom_roster, :muc_thread 
 
   def initialize(elements)
+
+    $DEBUG = true
+    Thread.abort_on_exception = true
 
     @version = "1.0"
 
     @mucbot = nil
     @occupant_count = 0
     @starttime = Time.now
-    @joined_room = false
+    @connected_to_room = false
 
     @elements = elements
     @room_jid = @elements[:room_jid]
@@ -59,82 +62,82 @@ class MUCBot
     end
     @muc_number = highest + 1
 
-    # kick off a new thread to handle everything
+    @mucbot = Jabber::MUC::SimpleMUCClient.new($b.xmpp.client)
+
+    #callbacks
+
+    @mucbot.on_message do |time,nick,text|
+      self.handle_pub_msg(time,nick,text)
+    end
+
+    @mucbot.on_private_message do |time,nick,text|
+      self.handle_priv_msg(time,nick,text)
+    end
+
+    @mucbot.on_room_message do |time,text|
+      self.handle_room_msg(time,text)
+    end
+
+    @mucbot.on_subject do |time,nick,jid,subject|
+      self.handle_change_topic(time,nick,jid,subject)
+    end
+
+    @mucbot.on_join do |time,nick|
+      self.handle_join(time,nick)
+    end
+
+    @mucbot.on_leave do |time,nick|
+      self.handle_leave(time,nick)
+    end
+
+    @mucbot.on_self_leave do
+      self.handle_self_leave()
+    end
+
+    # join room 
     @muc_thread = Thread.new do
       begin
-        logit("new @mucbot [#{@muc_number}] for: #{@room_jid} alias: #{@room_alias}")
-        @mucbot = Jabber::MUC::SimpleMUCClient.new($b.xmpp.client)
-
-        #callbacks
-
-        @mucbot.on_message do |time,nick,text|
-          self.handle_pub_msg(time,nick,text)
-        end
-
-        @mucbot.on_private_message do |time,nick,text|
-          self.handle_priv_msg(time,nick,text)
-        end
-
-        @mucbot.on_room_message do |time,text|
-          self.handle_room_msg(time,text)
-        end
-
-        @mucbot.on_subject do |time,nick,jid,subject|
-          self.handle_change_topic(time,nick,jid,subject)
-        end
-
-        @mucbot.on_join do |time,nick|
-          self.handle_join(time,nick)
-        end
-
-        @mucbot.on_leave do |time,nick|
-          self.handle_leave(time,nick)
-        end
-
-        @mucbot.on_self_leave do
-          self.handle_self_leave()
-        end
-
         self.join_room()
-
+        while @connected_to_room do
+          sleep 0.2
+        end
       rescue Exception => e
-        logit("Error (@muc_thread): " + e.to_s)
+        logit("Error (mucbot:#{@mucbot}): " + e.to_s)
+        $b.notify("Error (mucbot:#{@mucbot}): " + e.to_s)
+      ensure
+        @mucbot = nil
       end
-    end # @muc_thread
-    @muc_thread[:name] = "muc:#{@muc_number}"
+    end
   end # initialize
 
 
   def join_room
-    #join_thread
-    join_thread = Thread.new do
-      begin
-        $b.notify("Attempting to join: #{@room_jid}/#{@botnick} alias: [#{@muc_number}]#{@room_alias}")
-        @mucbot.join("#{@room_jid}/#{@botnick}", @password)
-      rescue Exception => ex
-        logit("Error joining #{@room_jid}: " + ex.to_s)
-        $b.notify("Error joining #{@room_jid}: " + ex.to_s)
+    begin
+      #join_thread
+      join_thread = Thread.new do
+        begin
+          $b.notify("Attempting to join: #{@room_jid}/#{@botnick} alias: [#{@muc_number}]#{@room_alias}")
+          @mucbot.join("#{@room_jid}/#{@botnick}", @password)
+        rescue Exception => ex
+          logit("Error joining #{@room_jid}: " + ex.to_s)
+          $b.notify("Error joining #{@room_jid}: " + ex.to_s)
+        end
       end
-    end
-    join_thread[:name] = "mucjoin:#{@muc_number}"
-    unless join_thread.join(10)
-      $b.notify("Error: timeout on joining room #{@room_jid}")
-      logit("Error: timeout on joining room #{@room_jid}")
+      unless join_thread.join(10)
+        $b.notify("Error: timeout on joining room #{@room_jid}")
+        logit("Error: timeout on joining room #{@room_jid}")
+        Thread.kill(join_thread)
+      else
+        $b.notify("Joined room [#{@muc_number}]#{@room_alias} #{@room_jid}.")
+        logit("Joined room [#{@muc_number}]#{@room_alias} #{@room_jid}.")
+        @connected_to_room = true
+        Thread.kill(join_thread)
+      end
+    rescue Exception => e
+      logit("Error (mucbot:#{@mucbot}): " + e.to_s)
+      $b.notify("Error (mucbot:#{@mucbot}): " + e.to_s)
+    ensure
       Thread.kill(join_thread)
-    else
-      $b.notify("Joined room [#{@muc_number}]#{@room_alias} #{@room_jid}.")
-      logit("Joined room [#{@muc_number}]#{@room_alias} #{@room_jid}.")
-      @joined_room = true
-      Thread.kill(join_thread)
-    end
-    # if joining room failed, end the @muc_thread
-    unless @joined_room
-      @joined_room = false
-      Thread.kill(@muc_thread)
-      #unless @muc_thread.join(3)
-      #  $b.notify("Error: timed out waiting for muc_thread to exit")
-      #  logit("Error: timed out waiting for muc_thread to exit")
-      #end
     end
   end
 
@@ -267,14 +270,24 @@ class MUCBot
   end
     
   def disconnect
-    begin
-      $master_initiated_leave = true
-      @mucbot.exit
-      Thread.kill(@muc_thread)
-      logit("disconnected from room [#{@muc_number}]#{room_alias} #{@room_jid}")
-      $b.notify("disconnected from room [#{@muc_number}]#{room_alias} #{@room_jid} (by command)")
-    rescue Exception => e
-      logit("Error (@mucbot.disconnect): " + e.to_s)
+    disconnect_thread = Thread.new do
+      begin
+        $master_initiated_leave = true
+        @mucbot.exit
+        sleep 10
+        logit("disconnected from room [#{@muc_number}]#{room_alias} #{@room_jid}")
+        $b.notify("disconnected from room [#{@muc_number}]#{room_alias} #{@room_jid} (by command)")
+      rescue Exception => e
+        $b.notify("Error (@mucbot.disconnect): " + e.to_s)
+        logit("Error (@mucbot.disconnect): " + e.to_s)
+      ensure
+        @connected_to_room = false
+      end
+    end
+    unless disconnect_thread.join(20)
+      $b.notify("Error: timeout disconnecting from room #{@room_jid}")
+      logit("Error: timeout disconnecting room #{@room_jid}")
+      Thread.kill(disconnect_thread)
     end
   end
 

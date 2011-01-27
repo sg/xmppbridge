@@ -294,7 +294,7 @@ class IRCclient
 
         if msg.match(/^PING :(.+)/) 
           @sock.write("PONG #{$1}\n")
-          reply_user(@jid, ">>> answered PING from #{$1}", "std")
+          # reply_user(@jid, ">>> answered PING from #{$1}", "std")
 
         elsif msg.match(/^:(.+?)!(.+?) NOTICE (.+?) :(.+)$/)
           notice_msg = "."

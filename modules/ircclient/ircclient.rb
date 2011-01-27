@@ -216,7 +216,7 @@ class IRCclient
         else
           unless @channel == nil
             @sock.write("PRIVMSG #{@channel} :#{msg}\n")
-            reply_user(@jid, "sent to: #{@channel}", "std")
+            # reply_user(@jid, "sent to: #{@channel}", "std")
           else
             reply_user(@jid, "not active on a channel: use .c or .j", "std")
           end

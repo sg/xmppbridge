@@ -61,7 +61,7 @@ end
 $bridged_app_timeout = config['timeout'].to_i
 
 # Debuging: true = extensive xmpp output to stderr
-debug_mode = true
+debug_mode = false
 
 # Initial setting for botmasters to see source code for botcmds when
 # they are executed (very noisy when enabled)

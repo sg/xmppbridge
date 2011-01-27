@@ -219,7 +219,7 @@ else # database doesn't exist; create and populate
   $db.execute("CREATE INDEX banidx ON bans (jid)")
 
   # populate roster table with default bot masters
-  $db.execute("INSERT INTO roster (rjid,rlvl,rnick,rpasswd,in_lobby) VALUES ('#{$default_master}','owner','Steve','foobar99', '1')")
+  $db.execute("INSERT INTO roster (rjid,rlvl,rnick,rpasswd,in_lobby) VALUES ('#{$default_master}','owner','#{$botnick}','foobar99', '1')")
   $masters << $default_master
   logit("done inserting default master user")
 

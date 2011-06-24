@@ -926,10 +926,12 @@ class IRCclient
           mode = $5
           target = $6 
           user = get_user_from_nick(target)
-          if mode == "+o"
-            user.op = true
-          elsif mode == "-o"
-            user.op = false
+          if !user.nil?
+            if mode == "+o"
+              user.op = true
+            elsif mode == "-o"
+              user.op = false
+            end
           end
           mode_msg = "*** [#{channel_name}] MODE #{mode} #{target} by #{nick}"
           reply_user(@jid, mode_msg.chomp, "std")

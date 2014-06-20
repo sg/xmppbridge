@@ -560,7 +560,7 @@ class IRCclient
         else
           unless @channel == nil
             @sock.write("PRIVMSG #{@channel.name} :#{msg}\n")
-            reply_user(@jid, "sent to: #{@channel.name}", "std")
+            # reply_user(@jid, "sent to: #{@channel.name}", "std")
           else
             reply_user(@jid, "not active on a channel: use .c or .j", "std")
           end
@@ -926,10 +926,12 @@ class IRCclient
           mode = $5
           target = $6 
           user = get_user_from_nick(target)
-          if mode == "+o"
-            user.op = true
-          elsif mode == "-o"
-            user.op = false
+          if !user.nil?
+            if mode == "+o"
+              user.op = true
+            elsif mode == "-o"
+              user.op = false
+            end
           end
           mode_msg = "*** [#{channel_name}] MODE #{mode} #{target} by #{nick}"
           reply_user(@jid, mode_msg.chomp, "std")

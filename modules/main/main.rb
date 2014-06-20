@@ -248,7 +248,7 @@ class XMPPBridgeMain
           seen = Time.now.strftime('%Y-%m-%d %H:%M:%S')
           $db.execute("UPDATE roster SET lastseen='#{seen}' WHERE rjid='" + sql_sanitize(ujid) + "'")
           #quit_bridged_app(ujid)
-          leave_lobby(ujid, "unavailable")  
+          #leave_lobby(ujid, "unavailable")  
         end
 
       end
